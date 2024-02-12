@@ -8,3 +8,5 @@ src/dosbox
 autom4te.cache
 *.log
 configure
+config.h
+config.status
