@@ -1,0 +1,8 @@
+*.in
+*.o
+*.Po
+*.a
+Makefile
+src/dosbox
+*~
+autom4te.cache
