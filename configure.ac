@@ -241,6 +241,13 @@ AC_ARG_ENABLE(core-inline,AC_HELP_STRING([--enable-core-inline],[Enable inlined 
   fi
 ],)
 
+AH_TEMPLATE(C_SRDP,[Define to 1 to enable SRDP server])
+AC_ARG_ENABLE(SRDP,AC_HELP_STRING([--enable-SRDP],[Enable SRDP server]),[
+  if test x$enable_SRDP = xyes ; then 
+    AC_MSG_RESULT([enabling SRDP server])
+    AC_DEFINE(C_SRDP,1)
+  fi
+],)
 
 dnl The target cpu checks for dynamic cores
 AH_TEMPLATE(C_TARGETCPU,[The type of cpu this target has])

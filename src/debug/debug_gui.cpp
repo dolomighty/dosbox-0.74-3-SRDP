@@ -268,7 +268,7 @@ void DBGUI_StartUp(void) {
 	dbg.win_main=initscr();
 	cbreak();       /* take input chars one at a time, no wait for \n */
 	noecho();       /* don't echo input */
-	nodelay(dbg.win_main,true);
+	nodelay(dbg.win_main,true); // non-blocking getch()
 	keypad(dbg.win_main,true);
 	#ifndef WIN32
 	resizeterm(50,80);

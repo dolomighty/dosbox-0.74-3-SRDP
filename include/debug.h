@@ -16,6 +16,10 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+// invoked when debug monitor RUN key is pressed
+// also invoked by SRDP
+void DEBUG_run();
+
 void DEBUG_SetupConsole(void);
 void DEBUG_DrawScreen(void);
 bool DEBUG_Breakpoint(void);
@@ -25,6 +29,8 @@ void DEBUG_CheckExecuteBreakpoint(Bit16u seg, Bit32u off);
 bool DEBUG_ExitLoop(void);
 void DEBUG_RefreshPage(char scroll);
 Bitu DEBUG_EnableDebugger(void);
+Bit32u GetAddress(Bit16u seg, Bit32u offset);
+Bit32u DEBUG_CheckKeys_winstyle( int key );
 
 extern Bitu cycle_count;
 extern Bitu debugCallback;

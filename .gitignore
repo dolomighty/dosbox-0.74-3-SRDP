@@ -6,3 +6,5 @@ Makefile
 src/dosbox
 *~
 autom4te.cache
+*.log
+configure
