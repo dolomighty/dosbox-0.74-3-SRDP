@@ -580,9 +580,10 @@ static std::string action_step( const SUBJ_ENUM subj, const std::vector<std::str
     return "";
 }
 
+void DEBUG_run_standalone(); // debug.cpp
 
 static std::string action_run( const SUBJ_ENUM subj, const std::vector<std::string>& argv ){
-    DEBUG_run();
+    DEBUG_run_standalone();
     return "";
 }
 

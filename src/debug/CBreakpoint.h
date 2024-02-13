@@ -59,9 +59,9 @@ public:
     static CBreakpoint*     AddBreakpoint       (PhysPt adr, bool once);
     static CBreakpoint*     AddIntBreakpoint    (Bit8u intNum, Bit16u ah, bool once);
     static CBreakpoint*     AddMemBreakpoint    (Bit16u seg, Bit32u off);
-    static void             ActivateBreakpoints (PhysPt adr, bool activate);
+    static void             ActivateAllBreakpoints (bool yes_no );
     static bool             CheckBreakpoint     (PhysPt adr);
-    static bool             CheckBreakpoint     (Bitu seg, Bitu off);
+    static bool             CheckBreakpoint     (Bitu seg, Bitu off) { return CheckBreakpoint(GetAddress(seg,off)); }
     static bool             CheckIntBreakpoint  (PhysPt adr, Bit8u intNr, Bit16u ahValue);
     static bool             IsBreakpoint        (PhysPt where);
     static bool             IsBreakpointDrawn   (PhysPt where);
@@ -165,37 +165,44 @@ CBreakpoint* CBreakpoint::AddMemBreakpoint(Bit16u seg, Bit32u off)
     return bp;
 };
 
-void CBreakpoint::ActivateBreakpoints(PhysPt adr, bool activate)
+
+
+void CBreakpoint::ActivateAllBreakpoints(bool yes_no)
 {
     // activate all breakpoints
-    std::list<CBreakpoint*>::iterator i;
-    CBreakpoint* bp;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
-        bp = (*i);
-        // Do not activate, when bp is an actual address
-        if (activate && (bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==adr)) {
-            // Do not activate :)
-            continue;
-        }
-        bp->Activate(activate); 
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
+        CBreakpoint* bp = (*i);
+
+//        // a quanto pare questo snippet provoca un crash all'atto di 
+//        // uno stepover su call (sospetto anche su int, rep e loop )
+//        // un crash mascherato da uscita regolare (per lo meno, cosi dice gdb)
+//        // lo lascio per documentazione
+//
+//        // Do not activate, when bp is an actual address
+//        if (activate && (bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==adr)) {
+//            // Do not activate :)
+//            continue;
+//        }
+
+        bp->Activate(yes_no); 
     };
 };
 
-bool CBreakpoint::CheckBreakpoint(Bitu seg, Bitu off)
+
+bool CBreakpoint::CheckBreakpoint( PhysPt addr )
 // Checks if breakpoint is valid an should stop execution
 {
-    if ((ignoreAddressOnce!=0) && (GetAddress(seg,off)==ignoreAddressOnce)) {
+    if ((ignoreAddressOnce!=0) && (addr==ignoreAddressOnce)) {
         ignoreAddressOnce = 0;
         return false;
-    } else
-        ignoreAddressOnce = 0;
+    }
+    ignoreAddressOnce = 0;
+
 
     // Search matching breakpoint
-    std::list<CBreakpoint*>::iterator i;
-    CBreakpoint* bp;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
-        bp = (*i);
-        if ((bp->GetType()==BKPNT_PHYSICAL) && bp->IsActive() && (bp->GetSegment()==seg) && (bp->GetOffset()==off)) {
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
+        CBreakpoint* bp = (*i);
+        if ((bp->GetType()==BKPNT_PHYSICAL) && bp->IsActive() && (bp->GetLocation()==addr)) {
             // Ignore Once ?
             if (ignoreOnce==bp) {
                 ignoreOnce=0;
@@ -251,14 +258,12 @@ bool CBreakpoint::CheckIntBreakpoint(PhysPt adr, Bit8u intNr, Bit16u ahValue)
     if ((ignoreAddressOnce!=0) && (adr==ignoreAddressOnce)) {
         ignoreAddressOnce = 0;
         return false;
-    } else
-        ignoreAddressOnce = 0;
+    }
+    ignoreAddressOnce = 0;
 
     // Search matching breakpoint
-    std::list<CBreakpoint*>::iterator i;
-    CBreakpoint* bp;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
-        bp = (*i);
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
+        CBreakpoint* bp = (*i);
         if ((bp->GetType()==BKPNT_INTERRUPT) && bp->IsActive() && (bp->GetIntNr()==intNr)) {
             if ((bp->GetValue()==BPINT_ALL) || (bp->GetValue()==ahValue)) {
                 // Ignoie it once ?

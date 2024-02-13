@@ -62,6 +62,8 @@ static struct termios consolesettings;
 #endif
 int old_cursor_state;
 
+
+
 // Forwards
 static void DrawCode(void);
 static void DEBUG_RaiseTimerIrq(void);
@@ -78,6 +80,11 @@ static void DrawVariables(void);
 static void SetCodeWinStart();
 static char* AnalyzeInstruction(char* inst, bool saveSelector);
 static Bit32u GetHexValue(char* str, char*& hex);
+static void debugging_leave();
+static void debugging_enter();
+static int after_traceinto( int ret );
+
+
 
 class DebugPageHandler : public PageHandler {
 public:
@@ -94,6 +101,7 @@ class DEBUG;
 
 DEBUG*  pDebugcom   = 0;
 bool    exitLoop    = false;
+Bitu debugCallback;
 
 
 // Heavy Debugging Vars for logging
@@ -156,6 +164,9 @@ static bool     showExtend = true;
 /***********/
 /* Helpers */
 /***********/
+
+
+
 
 Bit32u PhysMakeProt(Bit16u selector, Bit32u offset)
 {
@@ -302,7 +313,7 @@ bool DEBUG_Breakpoint(void)
     if (!CBreakpoint::CheckBreakpoint(SegValue(cs),reg_eip)) return false;
     // Found. Breakpoint is valid
     PhysPt where=GetAddress(SegValue(cs),reg_eip);
-    CBreakpoint::ActivateBreakpoints(where,false);  // Deactivate all breakpoints
+    CBreakpoint::ActivateAllBreakpoints(false);
     return true;
 };
 
@@ -313,9 +324,20 @@ bool DEBUG_IntBreakpoint(Bit8u intNum)
     PhysPt where=GetAddress(SegValue(cs),reg_eip);
     if (!CBreakpoint::CheckIntBreakpoint(where,intNum,reg_ah)) return false;
     // Found. Breakpoint is valid
-    CBreakpoint::ActivateBreakpoints(where,false);  // Deactivate all breakpoints
+    CBreakpoint::ActivateAllBreakpoints(false);
     return true;
 };
+
+
+static void run_program(){
+    if(!debugging)return;
+    CBreakpoint::ActivateAllBreakpoints(true);                     
+    ignoreAddressOnce = SegPhys(cs)+reg_eip;
+    debugging_leave();
+    after_traceinto(0);
+}
+
+
 
 
 static bool StepOver()
@@ -323,29 +345,33 @@ static bool StepOver()
     // se l'istr è una di quelle sotto:
     // -setta un breakpoint momentaneo all'istr successiva
     // -lancia la vm
+    // 
+    // altrimenti fa solo un traceinto
+
     exitLoop = false;
-    PhysPt start=GetAddress(SegValue(cs),reg_eip);
+    PhysPt start = GetAddress(SegValue(cs),reg_eip);
     char dline[200];
     Bitu size = DasmI386(dline, start, reg_eip, cpu.code.big);
     if (strstr(dline,"call") ||
         strstr(dline,"loop") ||
         strstr(dline,"int")  ||
-        strstr(dline,"rep")) {
-        CBreakpoint::AddBreakpoint      (SegValue(cs),reg_eip+size, true);
-        CBreakpoint::ActivateBreakpoints(start, true);
+        strstr(dline,"rep")
+    ){
+        CBreakpoint::AddBreakpoint      (start+size, true);
+        CBreakpoint::ActivateAllBreakpoints(true);
         DrawCode();
-        debugging=false;
-        DOSBOX_SetNormalLoop();
+        debugging_leave();
         return true;
     } 
-    return false;
+
+    return false; // verra chiamata traceinto e after_traceinto
 };
 
 
 static int TraceInto(){
     exitLoop = false;
     skipFirstInstruction = true; // for heavy debugger
-    CPU_Cycles = 1;
+    CPU_Cycles = 1; // esegui solo un'instruzione (e se arriva un interrupt?)
     int ret=(*cpudecoder)();
     SetCodeWinStart();
     CBreakpoint::ignoreOnce = 0;
@@ -874,8 +900,7 @@ bool DEBUG_ParseCommand( const char* _str ){
         cpuLogFile << hex << noshowbase << setfill('0') << uppercase;
         cpuLog = true;
         cpuLogCounter = GetHexValue(found,found);
-
-        CBreakpoint::ActivateBreakpoints(SegPhys(cs)+reg_eip,true);                     
+        CBreakpoint::ActivateAllBreakpoints(true);                     
         ignoreAddressOnce = SegPhys(cs)+reg_eip;
         debugging = false;
         DOSBOX_SetNormalLoop(); 
@@ -896,7 +921,7 @@ bool DEBUG_ParseCommand( const char* _str ){
         Bit8u intNr = (Bit8u)GetHexValue(found,found);
         DEBUG_ShowMsg("DEBUG: Starting INT %02X\n",intNr);
         CBreakpoint::AddBreakpoint(SegValue(cs),reg_eip, true);
-        CBreakpoint::ActivateBreakpoints(SegPhys(cs)+reg_eip-1,true);
+        CBreakpoint::ActivateAllBreakpoints(true);
         DrawCode();
         debugging = false;
         DOSBOX_SetNormalLoop();
@@ -1222,14 +1247,6 @@ static char* AnalyzeInstruction(char* inst, bool saveSelector) {
 
 
 
-void DEBUG_run(){
-    if(!debugging)return;
-    CBreakpoint::ActivateBreakpoints(SegPhys(cs)+reg_eip,true);                     
-    ignoreAddressOnce = SegPhys(cs)+reg_eip;
-    debugging=false;
-    DOSBOX_SetNormalLoop(); 
-}
-
 
 
 
@@ -1260,7 +1277,7 @@ Bit32u DEBUG_CheckKeys_winstyle( int key );
 
 Bit32u DEBUG_CheckKeys(void) {
     int key = getch(); // getch è configurata non-blocking
-    if( key <= 0 )return 0;
+    if( key <= 0 )return 0; // questa condizione era in DEBUG_CheckKeys() originale
 
     // le combo ALT+x che ci interessano
     static std::unordered_map<int,int> xlat {
@@ -1314,16 +1331,17 @@ Bit32u DEBUG_CheckKeys(void) {
 }
 
 
-static int after_traceinto( int traceinto_retval ){
+static int after_traceinto( int ret ){
     // questo snippet prima stava in DEBUG_CheckKeys_winstyle
-    // esportata per poter implementare le actions senza passar dalla console
-    if (traceinto_retval<0) return traceinto_retval;
-    if (traceinto_retval>0) {
-        traceinto_retval=(*CallBack_Handlers[traceinto_retval])();
-        if (traceinto_retval) {
+    // prende il retval di TraceInto()
+    // esportata per implementare le actions senza passar dalla console
+    if (ret<0) return ret;
+    if (ret>0) {
+        ret=(*CallBack_Handlers[ret])();
+        if (ret) {
             exitLoop=true;
             CPU_Cycles=CPU_CycleLeft=0;
-            return traceinto_retval;
+            return ret;
         }
     }
     DEBUG_DrawScreen();
@@ -1415,7 +1433,7 @@ Bit32u DEBUG_CheckKeys_winstyle( int key ){
             break;
 
         case KEY_F(9):  // Run Program
-            DEBUG_run();
+            run_program();
             break;
 
         case KEY_F(2):  // Set/Remove TBreakpoint
@@ -1474,10 +1492,6 @@ Bit32u DEBUG_CheckKeys_winstyle( int key ){
 
 Bitu DEBUG_Loop(void) {
     // chiamata a ripetizione mentre la console è attiva (non "running")
-    // okkio, la vm è ferma solo in parte: gli interrupts vengon ancora serviti!
-    // il sw guest potrebbe quindi accorgersi che viene monitorato
-    // a mio parere dovrebbe esser tutto fermo
-    // ma probabilmente la vm non è progettata per questo
 
     // visto che DEBUG_CheckKeys non è bloccante, questo loop è in effetti una busywait:
     // SDL_Delay evita cpu load spikes
@@ -1485,17 +1499,21 @@ Bitu DEBUG_Loop(void) {
 
 //TODO Disable sound
     SRDP_update();
+
     GFX_Events();
 
     // Interrupt started ? - then skip it
-    Bit16u oldCS    = SegValue(cs);
-    Bit32u oldEIP   = reg_eip;
+    // ...credo che si risolva il problema degli interrupts
+    // non eseguendoli se arrivano
+
+    PhysPt prev = GetAddress(SegValue(cs),reg_eip);
     PIC_runIRQs();
-    if ((oldCS!=SegValue(cs)) || (oldEIP!=reg_eip)) {
-        CBreakpoint::AddBreakpoint(oldCS,oldEIP,true);
-        CBreakpoint::ActivateBreakpoints(SegPhys(cs)+reg_eip,true);
-        debugging=false;
-        DOSBOX_SetNormalLoop();
+    PhysPt addr = GetAddress(SegValue(cs),reg_eip);
+
+    if ( addr != prev ){
+        CBreakpoint::AddBreakpoint(prev,true);
+        CBreakpoint::ActivateAllBreakpoints(true);
+        debugging_leave();
         return 0;
     }
 
@@ -1504,20 +1522,30 @@ Bitu DEBUG_Loop(void) {
 
 
 
+static void debugging_leave(){
+    debugging=false;
+    DOSBOX_SetNormalLoop(); 
+}
 
-
-
-
-void DEBUG_Enable(bool pressed) {
-    if(!pressed)return;
-    if(debugging)return;
-    static bool showhelp=false;
+static void debugging_enter(){
     debugging=true;
+    DOSBOX_SetLoop(&DEBUG_Loop);
+}
+
+
+
+
+void DEBUG_Enable(bool pressed=true) {
+    // invocata quando si preme/rilascia la combo debug-break da dosbox
+    // ma anche da DEBUG_EnableDebugger() 
+    if(!pressed)return; // ci interessa solo la pressione
+    if(debugging)return;
+    debugging_enter();
     SetCodeWinStart();
     DEBUG_DrawScreen();
-    DOSBOX_SetLoop(&DEBUG_Loop);
-    if(!showhelp) { 
-        showhelp=true;
+    static bool showhelp=true;
+    if(showhelp) { 
+        showhelp=false;
         DEBUG_ShowMsg("***| TYPE HELP (+ENTER) TO GET AN OVERVIEW OF ALL COMMANDS |***\n");
     }
     KEYBOARD_ClrBuffer();
@@ -1889,16 +1917,17 @@ void DEBUG_CheckExecuteBreakpoint(Bit16u seg, Bit32u off)
 {
     if (pDebugcom && pDebugcom->IsActive()) {
         CBreakpoint::AddBreakpoint(seg,off,true);       
-        CBreakpoint::ActivateBreakpoints(SegPhys(cs)+reg_eip,true); 
+        CBreakpoint::ActivateAllBreakpoints(true); 
         pDebugcom = 0;
     };
 };
 
 Bitu DEBUG_EnableDebugger(void)
 {
+    // invocata dai cpu loops quando si attiva un breakpoint
     exitLoop = true;
-    DEBUG_Enable(true);
     CPU_Cycles=CPU_CycleLeft=0;
+    DEBUG_Enable();
     return 0;
 };
 
@@ -1936,7 +1965,6 @@ static void DEBUG_ShutDown(Section * /*sec*/) {
     #endif
 }
 
-Bitu debugCallback;
 
 
 
@@ -2340,6 +2368,12 @@ void DEBUG_set_breakpoint_standalone( PhysPt addr ){
     if (CBreakpoint::IsBreakpoint(addr))return;
     CBreakpoint::AddBreakpoint(addr,false);
 }
+
+void DEBUG_run_standalone(){
+    run_program();
+    after_traceinto(0);
+}
+
 
 #endif // DEBUG
 

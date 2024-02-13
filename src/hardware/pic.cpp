@@ -265,6 +265,7 @@ void PIC_DeActivateIRQ(Bitu irq) {
 		PIC_IRQOnSecondPicActive&=~(1 << irq);
 	}
 }
+
 static inline bool PIC_startIRQ(Bitu i) {
 	/* irqs on second pic only if irq 2 isn't masked */
 	if( i > 7 && irqs[2].masked) return false;
