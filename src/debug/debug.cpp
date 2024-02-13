@@ -368,7 +368,7 @@ static bool StepOver()
         strstr(dline,"int")  ||
         strstr(dline,"rep")
     ){
-        CBreakpoint::AddBreakpoint      (start+size, true);
+        CBreakpoint::AddBreakpoint(start+size, true);
         CBreakpoint::ActivateAllBreakpoints(true);
         DrawCode();
         debugging_leave();
@@ -1432,13 +1432,12 @@ static Bit32u DEBUG_CheckKeys_winstyle( int key ){
             if (codeViewData.cursorPos>0) codeViewData.cursorPos--;
             else {
                 Bitu bytes = 0;
-                char dline[200];
-                Bitu size = 0;
                 Bit32u newEIP = codeViewData.useEIP - 1;
                 if(codeViewData.useEIP) {
                     for (; bytes < 10; bytes++) {
                         PhysPt start = GetAddress(codeViewData.useCS,newEIP);
-                        size = DasmI386(dline, start, newEIP, cpu.code.big);
+                        char dline[200];
+                        Bitu size = DasmI386(dline, start, newEIP, cpu.code.big);
                         if(codeViewData.useEIP == newEIP+size) break;
                         newEIP--;
                     }
@@ -1470,7 +1469,7 @@ static Bit32u DEBUG_CheckKeys_winstyle( int key ){
             {
                 PhysPt ptr = GetAddress(codeViewData.cursorSeg,codeViewData.cursorOfs);
                 if (CBreakpoint::IsBreakpoint(ptr)) CBreakpoint::DeleteBreakpoint(ptr);
-                else                                CBreakpoint::AddBreakpoint(codeViewData.cursorSeg, codeViewData.cursorOfs, false);
+                else                                CBreakpoint::AddBreakpoint(ptr, false);
             }
             break;
 
@@ -1891,6 +1890,12 @@ static void LogInstruction(Bit16u segValue, Bit32u eipValue,  ofstream& out) {
 };
 #endif
 
+
+
+
+
+
+
 // DEBUG.COM stuff
 
 class DEBUG : public Program {
@@ -1955,7 +1960,7 @@ void DEBUG_CheckExecuteBreakpoint(Bit16u seg, Bit32u off)
 Bitu DEBUG_EnableDebugger(void)
 {
     // invocata dai cpu loops quando si attiva un breakpoint
-    exitLoop = true;
+    exitLoop=true;
     CPU_Cycles=CPU_CycleLeft=0;
     DEBUG_Enable();
     return 0;
@@ -1964,6 +1969,10 @@ Bitu DEBUG_EnableDebugger(void)
 static void DEBUG_ProgramStart(Program * * make) {
     *make=new DEBUG;
 }
+
+
+
+
 
 // INIT 
 
@@ -2379,14 +2388,13 @@ bool DEBUG_HeavyIsBreakpoint(void) {
 // entrypoints per le varie azioni
 // l'idea è di avere delle fn entrocontenute che facciano quello che dicono
 // dovunque le si invochi (nel mio caso, SRDP)
+// ho replicato i passaggi che avvengono quando si invoca l'azione da console
 
-void DEBUG_TraceInto_standalone(){
-    // replica gli stessi effetti dell'azione invocata da console
+void DEBUG_TraceInto(){
     after_traceinto(TraceInto());
 }
 
-void DEBUG_StepOver_standalone(){
-    // replica gli stessi effetti dell'azione invocata da console
+void DEBUG_StepOver(){
     if(StepOver())return;
     after_traceinto(TraceInto());
 }
@@ -2395,12 +2403,12 @@ void DEBUG_breakpoint_clear_all(){
     CBreakpoint::DeleteAll();
 }
 
-void DEBUG_set_breakpoint_standalone( PhysPt addr ){
+void DEBUG_set_breakpoint( PhysPt addr ){
     if (CBreakpoint::IsBreakpoint(addr))return;
     CBreakpoint::AddBreakpoint(addr,false);
 }
 
-void DEBUG_run_standalone(){
+void DEBUG_run(){
     run_program();
     after_traceinto(0);
 }

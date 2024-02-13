@@ -424,13 +424,13 @@ static std::string rd_mem( const std::string& _start, const std::string& _bytes 
 //                              |_|                          
 
 
-void DEBUG_set_breakpoint_standalone( PhysPt addr ); // debug.cpp
+void DEBUG_set_breakpoint( PhysPt addr ); // debug.cpp
 
 static std::string breakpoint_set( const std::string& _addr ){
     // std::stoi ha base 10 di default, e sotto chiama strtol
     // dando base 0 si innesca l'autodetect di strtol, che interpreta anche ottale/esa
     auto addr = std::stoi(_addr,0,0);
-    DEBUG_set_breakpoint_standalone(addr);
+    DEBUG_set_breakpoint(addr);
 //    DEBUG_ShowMsg("=== addr %x\n",addr);
     return "";
 }
@@ -556,6 +556,11 @@ enum SUBJ_ENUM {
 #define ARGC (argv.size()-1)
 
 
+// debug.cpp
+void DEBUG_TraceInto(); 
+void DEBUG_StepOver();
+void DEBUG_run();
+
 
 static std::string action_break( const SUBJ_ENUM subj, const std::vector<std::string>& argv ){
     DEBUG_EnableDebugger();
@@ -563,27 +568,24 @@ static std::string action_break( const SUBJ_ENUM subj, const std::vector<std::st
 }
 
 
-void DEBUG_TraceInto_standalone(); // debug.cpp
 
 static std::string action_trace( const SUBJ_ENUM subj, const std::vector<std::string>& argv ){
     DEBUG_EnableDebugger();
-    DEBUG_TraceInto_standalone();
+    DEBUG_TraceInto();
     return "";
 }
 
 
-void DEBUG_StepOver_standalone(); // debug.cpp
 
 static std::string action_step( const SUBJ_ENUM subj, const std::vector<std::string>& argv ){
     DEBUG_EnableDebugger();
-    DEBUG_StepOver_standalone();
+    DEBUG_StepOver();
     return "";
 }
 
-void DEBUG_run_standalone(); // debug.cpp
 
 static std::string action_run( const SUBJ_ENUM subj, const std::vector<std::string>& argv ){
-    DEBUG_run_standalone();
+    DEBUG_run();
     return "";
 }
 
