@@ -5,7 +5,8 @@ SRDP (wip name) stands for simple remote debug protocol,
 a lightweight protocol to remotely control dosbox debugger
 
 why not GDB-RSP if there's a patch which implements it? too complex, imo.    
-also my main reverse engineering tool IDA do not work properly with the current implementation, it hangs too often.    
+also my main reverse engineering tool IDA do not work properly with the current implementation:    
+it hangs too often, it have problems tracking code, etc.    
 GDB support for x86 real mode is a bit lacking, to say the least.    
 then there's ghidra: I'm not too familiar with it, but judging from the few tests I made,
 it requires too much setup, and it also has the same hanging problem as IDA.    
@@ -21,7 +22,7 @@ see the accompanying barebone webapp/
 plaintext makes very easy to control the debugger from IDA+python and other tools      
 I've put some .py integrations scripts under IDA/
 
-# compiling
+## compiling
 usual automake steps:
 
 `./autogen.sh`      
@@ -50,7 +51,7 @@ one can use telnet or browser/curl/wget to access it, like this:
 `>CF 0 ZF 1 SF 0 OF 0 AF 0 PF 1 DF 0 IF 1 TF 0`           
 `>Connection closed by foreign host.`           
 
-# supported actions:
+## supported actions:
 
 TODO 2024-02-13 21:22:10: actions list       
 :	:	:	        
