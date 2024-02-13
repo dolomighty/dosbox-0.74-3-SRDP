@@ -23,10 +23,10 @@ I've put some .py integrations scripts under IDA/
 
 to compile, usual automake steps:
 
-`./autogen.sh`
-`./configure --enable-debug --enable-SRDP --program-suffix=-dbg`
-`make -j`
-`sudo make install`
+`./autogen.sh`      
+`./configure --enable-debug --enable-SRDP --program-suffix=-dbg`      
+`make -j`      
+`sudo make install`      
 
 changing the exe name (with program-suffix) is a matter of taste:       
 I do it to preserve the standard dosbox installation, you do you
