@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title> dosbox debug via SRDP webapp </title>
+	<link rel=stylesheet href=style.css>
+	<script src=index.js></script>
+</head>
+<body>
+	<i>build <span id=build></span></i><br>
+	<i>x86 disasm by <a target=_blank href=https://github.com/Recoskie/core>Recoskie</a></i><br>
+	<br>
+	SRDP server on port <input type=number id=port 
+		value=1234 placeholder="port, normally 1234"><br>
+	<br>
+	<button id=break> break </button>
+	<button id=run> run </button>
+	<button id=trace> trace into </button>
+	<button id=step> step over </button>
+	<button id=rd_regs> read regs </button>
+	<button id=rd_mem> read mem </button>
+	<br>
+	<pre id=out></pre>
+</body>
+</html>

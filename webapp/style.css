@@ -1,0 +1,21 @@
+
+body{
+	margin: 40px;
+	background: #444;
+	color: white;
+}
+a{
+	color: yellow;
+}
+input{
+	background: #333;
+	color: yellow;
+	width: 80px;
+	border: none;
+}
+#out{
+	overflow: auto;
+	white-space: break-spaces;
+	color: lightpink;
+}
+
