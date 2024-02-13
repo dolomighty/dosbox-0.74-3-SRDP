@@ -21,7 +21,8 @@ see the accompanying barebone webapp/
 plaintext makes very easy to control the debugger from IDA+python and other tools      
 I've put some .py integrations scripts under IDA/
 
-to compile, usual automake steps:
+# compiling
+usual automake steps:
 
 `./autogen.sh`      
 `./configure --enable-debug --enable-SRDP --program-suffix=-dbg`      
@@ -47,9 +48,9 @@ one can use telnet or browser/curl/wget to access it, like this:
 `>EAX 000000B5 EBX 00001800 ECX 000022CB EDX 00000012 ESI 00001800 EDI 00000000 EBP 00000000 ESP 00000BF4 EIP 00002CFA`           
 `>DS 01A2 ES 0000 FS 0000 GS 0000 SS 21A2 CS 01A2`           
 `>CF 0 ZF 1 SF 0 OF 0 AF 0 PF 1 DF 0 IF 1 TF 0`           
-`>Connection closed by foreign host.``           
+`>Connection closed by foreign host.`           
 
-here's a list of currently supported actions:
+# supported actions:
 
 TODO 2024-02-13 21:22:10: actions list       
 :	:	:	        
