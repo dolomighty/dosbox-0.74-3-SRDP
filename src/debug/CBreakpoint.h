@@ -36,7 +36,7 @@ public:
 
     CBreakpoint(void);
     void SetAddress (Bit16u seg, Bit32u off) { SetAddress(GetAddress(seg,off)); segment = seg; offset = off; };
-    void SetAddress (PhysPt adr)             { location = adr; type = BKPNT_PHYSICAL; };
+    void SetAddress (PhysPt addr)            { location = addr; type = BKPNT_PHYSICAL; };
 
     void                    SetInt          (Bit8u _intNr, Bit16u ah)   { intNr   = _intNr, ahValue = ah; type = BKPNT_INTERRUPT; };
     void                    SetOnce         (bool _once)                { once    = _once; };
@@ -56,13 +56,13 @@ public:
 
     // statics
     static CBreakpoint*     AddBreakpoint       (Bit16u seg, Bit32u off, bool once){ return AddBreakpoint(GetAddress(seg,off),once);}
-    static CBreakpoint*     AddBreakpoint       (PhysPt adr, bool once);
+    static CBreakpoint*     AddBreakpoint       (PhysPt addr, bool once);
     static CBreakpoint*     AddIntBreakpoint    (Bit8u intNum, Bit16u ah, bool once);
     static CBreakpoint*     AddMemBreakpoint    (Bit16u seg, Bit32u off);
     static void             ActivateAllBreakpoints (bool yes_no );
-    static bool             CheckBreakpoint     (PhysPt adr);
+    static bool             CheckBreakpoint     (PhysPt addr);
     static bool             CheckBreakpoint     (Bitu seg, Bitu off) { return CheckBreakpoint(GetAddress(seg,off)); }
-    static bool             CheckIntBreakpoint  (PhysPt adr, Bit8u intNr, Bit16u ahValue);
+    static bool             CheckIntBreakpoint  (PhysPt addr, Bit8u intNr, Bit16u ahValue);
     static bool             IsBreakpoint        (PhysPt where);
     static bool             IsBreakpointDrawn   (PhysPt where);
     static bool             DeleteBreakpoint    (PhysPt where);
@@ -96,7 +96,19 @@ public:
 std::list<CBreakpoint*> CBreakpoint::BPoints;
 CBreakpoint*            CBreakpoint::ignoreOnce = 0;
 
+
+
+
 static Bitu ignoreAddressOnce = 0;
+
+bool check_ignoreAddressOnce( PhysPt addr ){
+    if ((ignoreAddressOnce!=0) && (addr==ignoreAddressOnce)) {
+        ignoreAddressOnce = 0;
+        return true;
+    }
+    ignoreAddressOnce = 0;
+    return false;
+}
 
 
 
@@ -112,11 +124,11 @@ CBreakpoint::CBreakpoint(void):
 
 
 
-void CBreakpoint::Activate(bool _active)
+void CBreakpoint::Activate(bool yes_no)
 {
 #if !C_HEAVY_DEBUG
     if (GetType()==BKPNT_PHYSICAL) {
-        if (_active) {
+        if (yes_no) {
             // Set 0xCC and save old value
             Bit8u data = mem_readb(location);
             if (data!=0xCC) {
@@ -131,7 +143,7 @@ void CBreakpoint::Activate(bool _active)
         }
     }
 #endif
-    active = _active;
+    active = yes_no;
 };
 
 
@@ -179,7 +191,7 @@ void CBreakpoint::ActivateAllBreakpoints(bool yes_no)
 //        // lo lascio per documentazione
 //
 //        // Do not activate, when bp is an actual address
-//        if (activate && (bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==adr)) {
+//        if (activate && (bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==addr)) {
 //            // Do not activate :)
 //            continue;
 //        }
@@ -192,12 +204,7 @@ void CBreakpoint::ActivateAllBreakpoints(bool yes_no)
 bool CBreakpoint::CheckBreakpoint( PhysPt addr )
 // Checks if breakpoint is valid an should stop execution
 {
-    if ((ignoreAddressOnce!=0) && (addr==ignoreAddressOnce)) {
-        ignoreAddressOnce = 0;
-        return false;
-    }
-    ignoreAddressOnce = 0;
-
+    if(check_ignoreAddressOnce(addr))return false;
 
     // Search matching breakpoint
     for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
@@ -212,8 +219,8 @@ bool CBreakpoint::CheckBreakpoint( PhysPt addr )
             // Found, 
             if (bp->GetOnce()) {
                 // delete it, if it should only be used once
-                (BPoints.erase)(i);
-                bp->Activate(false);
+                BPoints.erase(i);
+                // bp->Activate(false); // prima del delete è inutile
                 delete bp;
             } else {
                 ignoreOnce = bp;
@@ -252,14 +259,10 @@ bool CBreakpoint::CheckBreakpoint( PhysPt addr )
     return false;
 };
 
-bool CBreakpoint::CheckIntBreakpoint(PhysPt adr, Bit8u intNr, Bit16u ahValue)
+bool CBreakpoint::CheckIntBreakpoint(PhysPt addr, Bit8u intNr, Bit16u ahValue)
 // Checks if interrupt breakpoint is valid an should stop execution
 {
-    if ((ignoreAddressOnce!=0) && (adr==ignoreAddressOnce)) {
-        ignoreAddressOnce = 0;
-        return false;
-    }
-    ignoreAddressOnce = 0;
+    if(check_ignoreAddressOnce(addr))return false;
 
     // Search matching breakpoint
     for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
@@ -275,8 +278,8 @@ bool CBreakpoint::CheckIntBreakpoint(PhysPt adr, Bit8u intNr, Bit16u ahValue)
                 // Found
                 if (bp->GetOnce()) {
                     // delete it, if it should only be used once
-                    (BPoints.erase)(i);
-                    bp->Activate(false);
+                    BPoints.erase(i);
+                    // bp->Activate(false); // prima del delete è inutile
                     delete bp;
                 } else {
                     ignoreOnce = bp;
@@ -290,11 +293,9 @@ bool CBreakpoint::CheckIntBreakpoint(PhysPt adr, Bit8u intNr, Bit16u ahValue)
 
 void CBreakpoint::DeleteAll() 
 {
-    std::list<CBreakpoint*>::iterator i;
-    CBreakpoint* bp;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
-        bp = (*i);
-        bp->Activate(false);
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
+        CBreakpoint* bp = (*i);
+        // bp->Activate(false); // prima del delete è inutile
         delete bp;
     };
     (BPoints.clear)();
@@ -305,17 +306,13 @@ bool CBreakpoint::DeleteByIndex(Bit16u index)
 {
     // Search matching breakpoint
     int nr = 0;
-    std::list<CBreakpoint*>::iterator i;
-    CBreakpoint* bp;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
-        if (nr==index) {
-            bp = (*i);
-            (BPoints.erase)(i);
-            bp->Activate(false);
-            delete bp;
-            return true;
-        }
-        nr++;
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++, nr++ ) {
+        if (nr!=index) continue;
+        CBreakpoint* bp = (*i);
+        BPoints.erase(i);
+        // bp->Activate(false); // prima del delete è inutile
+        delete bp;
+        return true;
     };
     return false;
 };
@@ -323,13 +320,11 @@ bool CBreakpoint::DeleteByIndex(Bit16u index)
 bool CBreakpoint::DeleteBreakpoint(PhysPt where) 
 {
     // Search matching breakpoint
-    std::list<CBreakpoint*>::iterator i;
-    CBreakpoint* bp;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
-        bp = (*i);
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
+        CBreakpoint* bp = (*i);
         if ((bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==where)) {
-            (BPoints.erase)(i);
-            bp->Activate(false);
+            BPoints.erase(i);
+            // bp->Activate(false); // prima del delete è inutile
             delete bp;
             return true;
         }
@@ -337,33 +332,29 @@ bool CBreakpoint::DeleteBreakpoint(PhysPt where)
     return false;
 };
 
-bool CBreakpoint::IsBreakpoint(PhysPt adr) 
+bool CBreakpoint::IsBreakpoint(PhysPt addr) 
 // is there a breakpoint at address ?
 {
     // Search matching breakpoint
-    std::list<CBreakpoint*>::iterator i;
-    CBreakpoint* bp;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
-        bp = (*i);
-        if ((bp->GetType()==BKPNT_PHYSICAL) && (bp->GetSegment()==adr)) {
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
+        CBreakpoint* bp = (*i);
+        if ((bp->GetType()==BKPNT_PHYSICAL) && (bp->GetSegment()==addr)) {
             return true;
         };
-        if ((bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==adr)) {
+        if ((bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==addr)) {
             return true;
         };
     };
     return false;
 };
 
-bool CBreakpoint::IsBreakpointDrawn(PhysPt adr) 
+bool CBreakpoint::IsBreakpointDrawn(PhysPt addr) 
 // valid breakpoint, that should be drawn ?
 {
     // Search matching breakpoint
-    std::list<CBreakpoint*>::iterator i;
-    CBreakpoint* bp;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
-        bp = (*i);
-        if ((bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==adr)) {
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++) {
+        CBreakpoint* bp = (*i);
+        if ((bp->GetType()==BKPNT_PHYSICAL) && (bp->GetLocation()==addr)) {
             // Only draw, if breakpoint is not only once, 
             return !bp->GetOnce();
         };
@@ -375,8 +366,7 @@ void CBreakpoint::ShowList(void)
 {
     // iterate list 
     int nr = 0;
-    std::list<CBreakpoint*>::iterator i;
-    for(i=BPoints.begin(); i != BPoints.end(); i++) {
+    for( auto i=BPoints.begin(); i != BPoints.end(); i++, nr++ ) {
         CBreakpoint* bp = (*i);
         if (bp->GetType()==BKPNT_PHYSICAL) {
             DEBUG_ShowMsg("%02X. BP %04X:%04X\n",nr,bp->GetSegment(),bp->GetOffset());
@@ -390,7 +380,6 @@ void CBreakpoint::ShowList(void)
         } else if (bp->GetType()==BKPNT_MEMORY_LINEAR ) {
             DEBUG_ShowMsg("%02X. BPLM %08X (%02X)\n",nr,bp->GetOffset(),bp->GetValue());
         };
-        nr++;
     }
 };
 
