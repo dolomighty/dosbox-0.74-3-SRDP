@@ -21,7 +21,6 @@
 void DEBUG_run();
 
 void DEBUG_SetupConsole(void);
-void DEBUG_DrawScreen(void);
 bool DEBUG_Breakpoint(void);
 bool DEBUG_IntBreakpoint(Bit8u intNum);
 void DEBUG_Enable(bool pressed);
@@ -30,7 +29,6 @@ bool DEBUG_ExitLoop(void);
 void DEBUG_RefreshPage(char scroll);
 Bitu DEBUG_EnableDebugger(void);
 Bit32u GetAddress(Bit16u seg, Bit32u offset);
-Bit32u DEBUG_CheckKeys_winstyle( int key );
 
 extern Bitu cycle_count;
 extern Bitu debugCallback;

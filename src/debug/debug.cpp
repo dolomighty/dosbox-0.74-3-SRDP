@@ -65,6 +65,7 @@ int old_cursor_state;
 
 
 // Forwards
+static void DEBUG_DrawScreen(void);
 static void DrawCode(void);
 static void DEBUG_RaiseTimerIrq(void);
 static void SaveMemory(Bit16u seg, Bit32u ofs1, Bit32u num);
@@ -124,11 +125,11 @@ static char curSelectorName[3] = { 0,0,0 };
 
 static Segment oldsegs[6];
 static Bitu oldflags,oldcpucpl;
-DBGBlock dbg;
 static Bitu input_count;
-Bitu cycle_count;
 static bool debugging;
 
+DBGBlock dbg;
+Bitu cycle_count;
 
 static void SetColor(Bitu test) {
     if (test) {
@@ -166,14 +167,13 @@ static bool     showExtend = true;
 /***********/
 
 
-
-
-Bit32u PhysMakeProt(Bit16u selector, Bit32u offset)
+static Bit32u PhysMakeProt(Bit16u selector, Bit32u offset)
 {
     Descriptor desc;
     if (cpu.gdt.GetDescriptor(selector,desc)) return desc.GetBase()+offset;
     return 0;
 };
+
 
 Bit32u GetAddress(Bit16u seg, Bit32u offset)
 {
@@ -185,12 +185,13 @@ Bit32u GetAddress(Bit16u seg, Bit32u offset)
     return (seg<<4)+offset;
 }
 
-static char empty_sel[] = { ' ',' ',0 };
 
-bool GetDescriptorInfo(char* selname, char* out1, char* out2)
+
+static bool GetDescriptorInfo(char* selname, char* out1, char* out2)
 {
     Bitu sel;
     Descriptor desc;
+    static char empty_sel[] = { ' ',' ',0 };
 
     if (strstr(selname,"cs") || strstr(selname,"CS")) sel = SegValue(cs);
     else if (strstr(selname,"ds") || strstr(selname,"DS")) sel = SegValue(ds);
@@ -269,6 +270,10 @@ bool GetDescriptorInfo(char* selname, char* out1, char* out2)
     return false;
 };
 
+
+
+
+
 /******************/
 /* DebugVar   stuff */
 /******************/
@@ -298,6 +303,12 @@ public:
 std::list<CDebugVar*> CDebugVar::varList;
 
 static bool skipFirstInstruction = false;
+
+
+
+
+
+
 
 /********************/
 /* Breakpoint stuff */
@@ -368,6 +379,7 @@ static bool StepOver()
 };
 
 
+
 static int TraceInto(){
     exitLoop = false;
     skipFirstInstruction = true; // for heavy debugger
@@ -377,6 +389,8 @@ static int TraceInto(){
     CBreakpoint::ignoreOnce = 0;
     return ret;
 }
+
+
 
 
 bool DEBUG_ExitLoop(void)
@@ -394,6 +408,9 @@ bool DEBUG_ExitLoop(void)
     }
     return false;
 };
+
+
+
 
 
 /********************/
@@ -421,6 +438,9 @@ static void DrawData(void) {
     }   
     wrefresh(dbg.win_data);
 };
+
+
+
 
 
 static void DrawRegisters(void) {
@@ -494,6 +514,9 @@ static void DrawRegisters(void) {
     mvwprintw(dbg.win_reg,3,60,"%lu       ",cycle_count);
     wrefresh(dbg.win_reg);
 };
+
+
+
 
 static void DrawCode(void) {
     bool saveSel; 
@@ -645,7 +668,11 @@ static Bit32u GetHexValue(char* str, char*& hex)
     return regval + value;
 };
 
-bool ChangeRegister(char* str)
+
+
+
+
+static bool ChangeRegister(char* str)
 {
     char* hex = str;
     while (*hex==' ') hex++;
@@ -686,7 +713,10 @@ bool ChangeRegister(char* str)
 };
 
 
-bool DEBUG_ParseCommand( const char* _str ){
+
+
+
+static bool DEBUG_ParseCommand( const char* _str ){
     if(!debugging)return true;
 
     char str[256];
@@ -1254,7 +1284,7 @@ static char* AnalyzeInstruction(char* inst, bool saveSelector) {
 
 
 
-Bit32u DEBUG_CheckKeys_winstyle( int key );
+static Bit32u DEBUG_CheckKeys_winstyle( int key );
 
 
 #if !(defined(WIN32) && defined(__PDCURSES__))
@@ -1275,7 +1305,7 @@ Bit32u DEBUG_CheckKeys_winstyle( int key );
 #endif
 
 
-Bit32u DEBUG_CheckKeys(void) {
+static Bit32u DEBUG_CheckKeys(void) {
     int key = getch(); // getch è configurata non-blocking
     if( key <= 0 )return 0; // questa condizione era in DEBUG_CheckKeys() originale
 
@@ -1351,7 +1381,7 @@ static int after_traceinto( int ret ){
 
 
 
-Bit32u DEBUG_CheckKeys_winstyle( int key ){
+static Bit32u DEBUG_CheckKeys_winstyle( int key ){
 
     Bits traceinto_retval=0;
 
@@ -1490,7 +1520,7 @@ Bit32u DEBUG_CheckKeys_winstyle( int key ){
 
 
 
-Bitu DEBUG_Loop(void) {
+static Bitu DEBUG_Loop(void) {
     // chiamata a ripetizione mentre la console è attiva (non "running")
 
     // visto che DEBUG_CheckKeys non è bloccante, questo loop è in effetti una busywait:
@@ -1556,7 +1586,7 @@ void DEBUG_Enable(bool pressed=true) {
 
 
 
-void DEBUG_DrawScreen(void) {
+static void DEBUG_DrawScreen(void) {
     DrawData();
     DrawCode();
     DrawRegisters();
@@ -1708,7 +1738,7 @@ static void LogIDT(void) {
     };
 };
 
-void LogPages(char* selname) {
+static void LogPages(char* selname) {
     char out1[512];
     if (paging.enabled) {
         Bitu sel = GetHexValue(selname,selname);
@@ -2211,7 +2241,7 @@ struct TLogInst {
 
 TLogInst logInst[LOGCPUMAX];
 
-void DEBUG_HeavyLogInstruction(void) {
+static void DEBUG_HeavyLogInstruction(void) {
 
     static char empty[23] = { 32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,32,0 };
 
@@ -2259,7 +2289,8 @@ void DEBUG_HeavyLogInstruction(void) {
     if (++logCount >= LOGCPUMAX) logCount = 0;
 };
 
-void DEBUG_HeavyWriteLogInstruction(void) {
+
+static void DEBUG_HeavyWriteLogInstruction(void) {
     if (!logHeavy) return;
     logHeavy = false;
     
@@ -2347,7 +2378,7 @@ bool DEBUG_HeavyIsBreakpoint(void) {
 
 // entrypoints per le varie azioni
 // l'idea è di avere delle fn entrocontenute che facciano quello che dicono
-// dovunque le si invochi
+// dovunque le si invochi (nel mio caso, SRDP)
 
 void DEBUG_TraceInto_standalone(){
     // replica gli stessi effetti dell'azione invocata da console
