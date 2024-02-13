@@ -23,10 +23,12 @@ I've put some .py integrations scripts under IDA/
 
 to compile, usual automake steps:
 
+`
 ./autogen.sh    
 ./configure --enable-debug --enable-SRDP --program-suffix=-dbg    
 make -j     
 sudo make install       
+`
 
 changing the exe name (with program-suffix) is a matter of taste:       
 I do it to preserve the standard dosbox installation, you do you
@@ -34,7 +36,8 @@ I do it to preserve the standard dosbox installation, you do you
 tcp server listens on localhost port 1234       
 one can use telnet or browser/curl/wget to access it, like this:
 
-$ curl -s http://localhost:1234/read%20registers       
+`
+$ curl -s http://localhost:1234/read%20registers    
 > EAX 0000FF67 EBX 00000026 ECX 00005CC5 EDX 00000000 ESI 0000A33C EDI 00003E6F EBP 00000014 ESP 00000BFC EIP 0000D413       
 DS 57DE ES 31A2 FS 0000 GS 0000 SS 21A2 CS 01A2        
 CF 0 ZF 0 SF 0 OF 0 AF 0 PF 1 DF 0 IF 1 TF 0        
@@ -48,6 +51,7 @@ read regi
 >DS 01A2 ES 0000 FS 0000 GS 0000 SS 21A2 CS 01A2      
 >CF 0 ZF 1 SF 0 OF 0 AF 0 PF 1 DF 0 IF 1 TF 0       
 >Connection closed by foreign host.       
+`
 
 here's a list of currently supported actions:
 
