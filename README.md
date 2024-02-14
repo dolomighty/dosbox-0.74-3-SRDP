@@ -4,7 +4,7 @@
 SRDP (wip name) stands for simple remote debug protocol,    
 a lightweight protocol to remotely control dosbox debugger
 
-why not GDB-RSP if there's a patch which implements it? too complex, imo.    
+why not GDB-RSP, when there's a patch which implements it? too unfriendly & complex, imo.    
 also my main reverse engineering tool IDA do not work properly with the current implementation:    
 it hangs too often, it have problems tracking code, etc.    
 GDB support for x86 real mode is a bit lacking, to say the least.    

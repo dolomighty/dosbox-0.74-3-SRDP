@@ -15,5 +15,6 @@ this way, when ida starts all .py scripts under user/ will be launched
 import glob
 userrc = idadir("python") + os.sep + "user/"
 for path in glob.glob(userrc+"*.py"):
+    if os.path.basename(path).startswith("-"):
+        continue
     idaapi.IDAPython_ExecScript(path, globals())
-
